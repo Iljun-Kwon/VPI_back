@@ -9,11 +9,12 @@ import os
 # import your predictor (from your uploaded file)
 from util.bundle_predict import predict_single
 from util.vpi_module import VPIVideoIn, VPIOut, run_vpi
+from util.pred7_module import Pred7In, Pred7Out, run_pred7
 from util import train_model, bundle_predict
 
 # ---- Config (use env or defaults) ----
-SHORTS_BUNDLE = os.getenv("SHORTS_BUNDLE", "data/shorts_bundle.pkl")
-LONG_BUNDLE   = os.getenv("LONG_BUNDLE", "data/long_bundle.pkl")
+SHORTS_BUNDLE = os.getenv("SHORTS_BUNDLE", "model/shorts_bundle.pkl")
+LONG_BUNDLE   = os.getenv("LONG_BUNDLE", "model/long_bundle.pkl")
 PORT          = int(os.getenv("PORT", "5001"))
 
 app = FastAPI(title="VPI Predictor")
@@ -43,7 +44,7 @@ async def predict_views(body: PredictIn):
     try:
         # choose bundle
         #bundle_path = SHORTS_BUNDLE if body.is_short else LONG_BUNDLE
-        bundle_path = bundle_predict.get_bundle_path(body.category, body.is_short, base_dir="data")
+        bundle_path = bundle_predict.get_bundle_path(body.category, body.is_short, base_dir="model")
 
         # run prediction
         y = predict_single(
@@ -70,6 +71,18 @@ async def predict_vpi(payload: List[VPIVideoIn]) -> List[VPIOut]:
     except FileNotFoundError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/predict/pred7", tags=["predict"])
+async def predict_pred7(payload: List[Pred7In]) -> List[Pred7Out]:
+    try:
+        return run_pred7(payload)
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except ValueError as e:
+        # invalid upload_date, unsupported category_id, etc.
         raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -107,6 +120,7 @@ def home():
     <h2>🔧 Train</h2>
     <p class="muted">Triggers <code>GET /train</code> to build and save both bundles.</p>
     <button class="primary" onclick="train()">Train Models</button>
+    <button class="primary" onclick="data()">Remake Data</button>
     <button class="ghost" onclick="health()">Check Health</button>
     <div id="trainResult"></div>
   </div>
@@ -198,7 +212,7 @@ def home():
           out.textContent = "❌ " + (data.error || JSON.stringify(data));
           return;
         }
-        const pretty = new Intl.NumberFormat().format(data.predicted_view_count);
+        const pretty = new Intl.NumberFormat().format(model.predicted_view_count);
         out.textContent = `🎯 Predicted Views: ${pretty}`;
         } catch (err) {
         out.textContent = "❌ " + err;
@@ -213,6 +227,10 @@ def home():
 def health():
     return {"ok": True}
 
+@app.get("/data")
+def make_data():
+    df = train_model.merge_datasets()
+    df = train_model.adjust_dataset(df)
 @app.get("/train")
 def run_training():
     os.environ["KMP_DUPLICATE_LIB_OK"] = "True"

@@ -1,4 +1,4 @@
-# data/data_loader.py
+# util/data_load.py
 import pandas as pd
 from config.settings import supabase_client
 import time

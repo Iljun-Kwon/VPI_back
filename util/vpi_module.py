@@ -9,7 +9,7 @@ from util.bundle_predict import predict_single
 from util import bundle_predict
 
 # Env (shared)
-BUNDLE_DIR = os.getenv("BUNDLE_DIR", "data")
+BUNDLE_DIR = os.getenv("BUNDLE_DIR", "model")
 CATEGORY_GROUPS: Dict[str, set] = {
     "film":           {1, 18, 30, 31, 33, 34, 35, 36, 37, 38, 39, 40, 41, 44},
     "knowledge":      {2, 26, 27, 28, 29},

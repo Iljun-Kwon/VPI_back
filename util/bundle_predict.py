@@ -36,7 +36,7 @@ def predict_single(bundle_path, subs, hours, like_count) -> int:
 
 CATEGORIES = ["entertainment", "film", "gaming", "knowledge", "life", "music", "news", "sports"]
 
-def get_bundle_path(category: str, is_short: bool, base_dir: str = "data") -> str:
+def get_bundle_path(category: str, is_short: bool, base_dir: str = "model") -> str:
     """
     Returns path like models/sports_short.pkl
     """
@@ -51,8 +51,8 @@ if __name__ == "__main__":
     subs_short, hours_short = 100000, 18
     subs_long, hours_long = 1000000, 24
 
-    views_short = predict_single("data/shorts_bundle.pkl", subs=subs_short, hours=hours_short)
-    views_long = predict_single("data/long_bundle.pkl", subs=subs_long, hours=hours_long)
+    views_short = predict_single("model/shorts_bundle.pkl", subs=subs_short, hours=hours_short)
+    views_long = predict_single("model/long_bundle.pkl", subs=subs_long, hours=hours_long)
 
     print(f"For {subs_short} subscribers in {hours_short} hours (Shorts): {views_short} Views")
     print(f"For {subs_long} subscribers in {hours_long} hours (Long): {views_long} Views")
