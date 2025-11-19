@@ -231,6 +231,7 @@ def health():
 def make_data():
     df = train_model.merge_datasets()
     df = train_model.adjust_dataset(df)
+
 @app.get("/train")
 def run_training():
     os.environ["KMP_DUPLICATE_LIB_OK"] = "True"
@@ -273,3 +274,8 @@ def run_training():
         joblib.dump(long_bundle, f"{cat.lower()}_long.pkl")
 
     print("\n✅ All category models saved (short/long)")
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    # No content, just stop the 404 logs
+    return Response(status_code=204)
