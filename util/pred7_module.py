@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from pydantic import BaseModel, Field, validator, field_validator
 from util.vpi_module import catid_to_group  # reuse the same mapping util
 from util.xgboostpred import predict_views_day7  # your existing model helper
+from util.xgboostbaselinepred import predict_baseline_views_day7
 
 
 class Pred7In(BaseModel):
@@ -105,6 +106,7 @@ class Pred7In(BaseModel):
 class Pred7Out(BaseModel):
     id: str
     predicted_7day_views: int
+    FI: float
 
 
 def run_pred7(payload: List[Pred7In]) -> List[Pred7Out]:
@@ -131,10 +133,23 @@ def run_pred7(payload: List[Pred7In]) -> List[Pred7Out]:
             likes_per_subscriber=likes_per_subscriber,
         )
 
+        base_y_hat = predict_baseline_views_day7(
+            subscriber_count = item.subscriber_count,
+            video_length = item.video_length,
+            category = item.category_group,
+            day_of_week = item.day_of_week,
+            hour_sin = item.hour_sin,
+            hour_cos = item.hour_cos,
+        )
+
+        predicted_7day_views=int(round(float(y_hat)))
+        FI = int(round(float(y_hat))) / int(round(float(base_y_hat)))
+
         out.append(
             Pred7Out(
                 id=item.id,
-                predicted_7day_views=int(round(float(y_hat))),
+                predicted_7day_views=predicted_7day_views,
+                FI = FI
             )
         )
 
