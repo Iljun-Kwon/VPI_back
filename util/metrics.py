@@ -24,7 +24,7 @@ def parse_published_at(series: pd.Series) -> pd.Series:
     s_clean = s_clean.replace({"None": None, "nan": None, "NaT": None})
 
     # 5) 숫자(정수/소수) 형태면 유닉스 초로 파싱 시도
-    is_num = s_clean.str.match(r"^\d+(\.\d+)?$").fillna(False)
+    is_num = s_clean.str.match(r"^\d+(\.\d+)?$", na=False)
     dt_numeric = pd.to_datetime(s_clean[is_num].astype(float), unit="s", errors="coerce")
 
     # 6) 나머지는 일반 문자열 파싱 (dateutil 기반)

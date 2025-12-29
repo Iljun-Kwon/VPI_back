@@ -1,4 +1,4 @@
-# pred7_module.py
+# pred7_module.py using xgboost module
 import math
 from typing import List, Optional
 from datetime import datetime, timezone
@@ -143,7 +143,7 @@ def run_pred7(payload: List[Pred7In]) -> List[Pred7Out]:
         )
 
         predicted_7day_views=int(round(float(y_hat)))
-        FI = int(round(float(y_hat))) / int(round(float(base_y_hat)))
+        FI = int(round(float(y_hat))) / (int(round(float(base_y_hat))) + 1e-9)
 
         out.append(
             Pred7Out(

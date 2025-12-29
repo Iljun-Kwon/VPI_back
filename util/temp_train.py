@@ -1,3 +1,4 @@
+# for checking subscriber diff
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import GroupShuffleSplit
@@ -7,18 +8,22 @@ from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 import xgboost as xgb
 import joblib
+import os
 
-def train_main_model(input_csv, target_col, output_model_name, output_csv_name):
+def train_main_model(input_csv, target_col, output_model_name):
     print(f"\n{'='*60}")
-    print(f"TRAINING MAIN MODEL: {input_csv} -> {output_model_name}")
+    print(f"TRAINING MODEL: {input_csv} -> {output_model_name}")
     print(f"{'='*60}")
 
     # 1) Load Data
-    try:
-        df_raw = pd.read_csv(input_csv)
-        df = df_raw.copy()
-    except FileNotFoundError:
+    if not os.path.exists(input_csv):
         print(f"Skipping {input_csv} (File not found)")
+        return
+
+    df = pd.read_csv(input_csv)
+    
+    if df.empty:
+        print(f"Skipping {input_csv} (DataFrame is empty)")
         return
 
     print(f"Target '{target_col}' stats:")
@@ -37,12 +42,17 @@ def train_main_model(input_csv, target_col, output_model_name, output_csv_name):
         "likes_per_subscriber",
         "likes_per_time",
     ]
+    # Ensure these columns actually exist in the dataframe before selecting them
+    # (Just in case some preprocessing dropped them, though unlikely)
+    available_num_cols = [c for c in NUM_COLS if c in df.columns]
+    
     CAT_COLS = ["category", "day_of_week", "is_short"]
+    available_cat_cols = [c for c in CAT_COLS if c in df.columns]
 
     # Target: log1p
     df["log_target"] = np.log1p(df[target_col])
     y = df["log_target"]
-    X = df[NUM_COLS + CAT_COLS]
+    X = df[available_num_cols + available_cat_cols]
 
     # 3) Train/valid split (Grouped by video_id)
     groups = df["video_id"]
@@ -60,20 +70,20 @@ def train_main_model(input_csv, target_col, output_model_name, output_csv_name):
     # 4) Preprocessing and model
     preprocessor = ColumnTransformer(
         transformers=[
-            ("num", "passthrough", NUM_COLS),
-            ("cat", OneHotEncoder(handle_unknown="ignore"), CAT_COLS),
+            ("num", "passthrough", available_num_cols),
+            ("cat", OneHotEncoder(handle_unknown="ignore"), available_cat_cols),
         ]
     )
 
     model = xgb.XGBRegressor(
         objective="reg:squarederror",
         max_depth=6,
-        learning_rate=0.02,
-        n_estimators=1000,
+        learning_rate=0.05,
+        n_estimators=500,
         subsample=0.8,
         colsample_bytree=0.8,
         reg_lambda=1.0,
-        reg_alpha=0.1,
+        reg_alpha=0.0,
         tree_method="hist", 
     )
 
@@ -84,8 +94,7 @@ def train_main_model(input_csv, target_col, output_model_name, output_csv_name):
 
     # 6) Evaluate
     y_pred_log = pipeline.predict(X_valid)
-    y_true_log = y_valid.values
-
+    
     y_pred = np.expm1(y_pred_log)
     y_valid_real = np.expm1(y_valid)
 
@@ -99,41 +108,24 @@ def train_main_model(input_csv, target_col, output_model_name, output_csv_name):
     print(f"Validation SMAPE: {smape:.2f}%")
     print(f"Validation wMAPE: {wmape:.2f}%")
 
-    # 6.5) Predict on FULL dataset and save CSV
-    print("Generating estimated_7d for full dataset...")
-    full_pred_log = pipeline.predict(X)
-    full_pred = np.expm1(full_pred_log)
-    df_out = df_raw.copy()
-    if "views_7d" in df_out.columns:
-        df_out["estimated_7d"] = full_pred
-        df_out["CPI"] = (df_out["views_7d"] / (df_out["estimated_7d"] + 1e-9)).round(3)
-    elif "views_30d" in df_out.columns:
-        df_out["estimated_30d"] = full_pred
-        df_out["CPI"] = (df_out["views_30d"] / (df_out["estimated_30d"] + 1e-9)).round(3)
-    else:
-        print("⚠️ 'views_7d' not found in input CSV. Skipping ratio column.")
-
-    df_out.to_csv(output_csv_name, index=False)
-    print(f"Saved prediction CSV to: {output_csv_name}")
-
     # 7) Save
     joblib.dump(pipeline, output_model_name)
     print(f"Saved model to: {output_model_name}")
 
 # --- Execution Loop ---
 if __name__ == "__main__":
+    # We now look for the LOW and HIGH variants of each file
     tasks = [
-        # (Input CSV, Target Column, Output Model File)
-        ("day3_to_day7_data.csv",   "views_7d",  "xgb_day3_to_day7_model.pkl", "day3_estimated_7d.csv"),
-        #("day3_to_day30_data.csv",  "views_30d", "xgb_day3_to_day30_model.pkl"),
-        #("day1_to_day30_data.csv",  "views_30d", "xgb_day1_to_day30_model.pkl"),
-        #("day2_to_day30_data.csv",  "views_30d", "xgb_day2_to_day30_model.pkl"),
-        ("day3_to_day30_data.csv",  "views_30d", "xgb_day3_to_day30_model.pkl", "day3_estimated_30d.csv"),
-        #("day4_to_day30_data.csv",  "views_30d", "xgb_day4_to_day30_model.pkl"),
-        #("day5_to_day30_data.csv",  "views_30d", "xgb_day5_to_day30_model.pkl"),
-        #("day6_to_day30_data.csv",  "views_30d", "xgb_day6_to_day30_model.pkl"),
-        #("day7_to_day30_data.csv",  "views_30d", "xgb_day7_to_day30_model.pkl"),        
+        # --- LOW SUBSCRIBER MODELS ---
+        ("day3_to_day7_LOW.csv",   "views_7d",  "xgb_day3_to_day7_LOW.pkl"),
+        ("day3_to_day30_LOW.csv",  "views_30d", "xgb_day3_to_day30_LOW.pkl"),
+        ("day7_to_day30_LOW.csv",  "views_30d", "xgb_day7_to_day30_LOW.pkl"),
+
+        # --- HIGH SUBSCRIBER MODELS ---
+        ("day3_to_day7_HIGH.csv",   "views_7d",  "xgb_day3_to_day7_HIGH.pkl"),
+        ("day3_to_day30_HIGH.csv",  "views_30d", "xgb_day3_to_day30_HIGH.pkl"),
+        ("day7_to_day30_HIGH.csv",  "views_30d", "xgb_day7_to_day30_HIGH.pkl"),
     ]
 
-    for csv_file, tgt_col, model_file, out_csv in tasks:
-        train_main_model(csv_file, tgt_col, model_file, out_csv)
+    for csv_file, tgt_col, model_file in tasks:
+        train_main_model(csv_file, tgt_col, model_file)

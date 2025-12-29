@@ -6,7 +6,7 @@ INPUT_CSV = "data.csv"
 # Configuration Constants
 FEATURE_MIN_HOUR = 0
 HOUR_TOL = 24            # Tolerance for finding the target row
-USE_ALL_SNAPSHOTS = True # True: keep all snapshots in window; False: keep only latest per video
+USE_ALL_SNAPSHOTS = False # True: keep all snapshots in window; False: keep only latest per video
 
 def generate_dataset(source_df, max_feature_hour, target_hour, target_col_name, output_filename):
     """
@@ -50,7 +50,7 @@ def generate_dataset(source_df, max_feature_hour, target_hour, target_col_name, 
 
 print("Loading raw snapshots...")
 df = pd.read_csv(INPUT_CSV)
-
+'''
 # 1. ORIGINAL: Under Day 3 (72h) features -> Day 7 (168h) view
 generate_dataset(
     source_df=df,
@@ -77,3 +77,14 @@ generate_dataset(
     target_col_name="views_30d",
     output_filename="day7_to_day30_data.csv"
 )
+'''
+# 3. NEW: Under Day 1~7 features -> Day 30 (720h) view
+for day in range(1, 8):
+    feature_hour = day * 24  # convert days to hours (1d=24h)
+    generate_dataset(
+        source_df=df,
+        max_feature_hour=feature_hour,
+        target_hour=720,
+        target_col_name="views_30d",
+        output_filename=f"day{day}_to_day30_data.csv"
+    )

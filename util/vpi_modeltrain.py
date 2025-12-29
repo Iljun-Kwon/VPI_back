@@ -33,7 +33,7 @@ class Log1pTransform:
 
 _DOW_NAMES = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]
 
-input_dim = 4
+input_dim = 5
 # -------------------------------
 # Model
 # -------------------------------
@@ -69,10 +69,11 @@ def build_features(df: pd.DataFrame) -> np.ndarray:
     hors_since_upload_raw = df["hours_since_upload"].astype("float32").values
     hsu = np.log1p(np.maximum(hors_since_upload_raw, 0.0) + 1e-6)
     likes = np.log1p(df["like_count"].astype("float32").values)
+    comments = np.log1p(df["comment_count"].astype("float32").values)
     like_per_sub = np.log1p(df["like_count"] / df["subscriber_count"]).astype("float32")
     #hour_sin = df["hour_sin"].astype("float32")
     #hour_cos = df["hour_cos"].astype("float32")
-    X = np.stack([subs, hsu, likes, like_per_sub], axis=1).astype(np.float32)
+    X = np.stack([subs, hsu, likes, comments, like_per_sub], axis=1).astype(np.float32)
     return X
 
 # -------------------------------
@@ -213,28 +214,31 @@ def train_one_model(
 
     mse = ((targets - preds) ** 2).mean()
     mae = np.abs(targets - preds).mean()
+    mape = (2 * np.abs(preds - targets) / np.abs(targets) + 1e-9).mean() * 100
     smape = (2 * np.abs(preds - targets) / (np.abs(preds) + np.abs(targets) + 1e-9)).mean() * 100
     rmsle = np.sqrt(np.mean((np.log1p(preds + 1e-9) - np.log1p(targets + 1e-9))**2))
 
     print(f"Test (log space)  MSE: {log_mse:.4f} | MAE: {log_mae:.4f}")
-    print(f"Test (original)   MSE: {mse:.2f} | MAE: {mae:.2f} | sMAPE: {smape:.2f}% | rmsle: {rmsle:.2f}")
+    print(f"Test (original)   MSE: {mse:.2f} | MAE: {mae:.2f} | MAPE: {mape:.2f}% | sMAPE: {smape:.2f}% | rmsle: {rmsle:.2f}")
 
     return model, scaler_X, scaler_y
 
 # -------------------------------
 # Prediction helpers
 # -------------------------------
-def _featurize_for_predict(subs: float, hours: float, likes:float) -> np.ndarray:
+def _featurize_for_predict(subs: float, hours: float, likes:float, comments:float) -> np.ndarray:
     subs = float(subs)
     hours = float(hours)
     likes = float(likes)
+    comments = float(comments)
     log_subs = np.log1p(subs)
     log_hours = np.log1p(max(hours, 0.0) + 1e-6)
     log_likes = np.log1p(likes)
-    return np.array([[log_subs, log_hours, log_likes]], dtype=np.float32)
+    log_comments = np.log1p(comments)
+    return np.array([[log_subs, log_hours, log_likes, log_comments]], dtype=np.float32)
 
-def predict_views_model(model, scaler_X, scaler_y, subs, hours, likes):
-    X_in = _featurize_for_predict(subs, hours, likes)
+def predict_views_model(model, scaler_X, scaler_y, subs, hours, likes, comments):
+    X_in = _featurize_for_predict(subs, hours, likes, comments)
     X_scaled = scaler_X.transform(X_in)
     x_tensor = torch.tensor(X_scaled, dtype=torch.float32)
     model.eval()
@@ -243,11 +247,11 @@ def predict_views_model(model, scaler_X, scaler_y, subs, hours, likes):
     pred = scaler_y.inverse_transform(pred_log)[0][0]
     return int(max(0, round(pred)))  # non-negative
 
-def predict_views(subs, hours, is_short, likes):
+def predict_views(subs, hours, is_short, likes, comments):
     if is_short:
-        return predict_views_model(model_short, scaler_short_X, scaler_short_y, subs, hours, likes)
+        return predict_views_model(model_short, scaler_short_X, scaler_short_y, subs, hours, likes, comments)
     else:
-        return predict_views_model(model_long, scaler_long_X, scaler_long_y, subs, hours, likes)
+        return predict_views_model(model_long, scaler_long_X, scaler_long_y, subs, hours, likes, comments)
 
 # -------------------------------
 # Example Usage

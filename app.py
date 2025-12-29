@@ -1,16 +1,16 @@
 import joblib
 from typing import List
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import os
 
 # import your predictor (from your uploaded file)
-from util.bundle_predict import predict_single
+from util.vpi_modelpred import predict_single
 from util.vpi_module import VPIVideoIn, VPIOut, run_vpi
 from util.pred7_module import Pred7In, Pred7Out, run_pred7
-from util import train_model, bundle_predict
+from util import vpi_modelpred, vpi_modeltrain
 
 # ---- Config (use env or defaults) ----
 SHORTS_BUNDLE = os.getenv("SHORTS_BUNDLE", "model/shorts_bundle.pkl")
@@ -44,7 +44,7 @@ async def predict_views(body: PredictIn):
     try:
         # choose bundle
         #bundle_path = SHORTS_BUNDLE if body.is_short else LONG_BUNDLE
-        bundle_path = bundle_predict.get_bundle_path(body.category, body.is_short, base_dir="model")
+        bundle_path = vpi_modelpred.get_bundle_path(body.category, body.is_short, base_dir="model")
 
         # run prediction
         y = predict_single(
@@ -229,14 +229,14 @@ def health():
 
 @app.get("/data")
 def make_data():
-    df = train_model.merge_datasets()
-    df = train_model.adjust_dataset(df)
+    df = vpi_modeltrain.merge_datasets()
+    df = vpi_modeltrain.adjust_dataset(df)
 
 @app.get("/train")
 def run_training():
     os.environ["KMP_DUPLICATE_LIB_OK"] = "True"
-    df = train_model.merge_datasets()
-    df = train_model.adjust_dataset(df)
+    df = vpi_modeltrain.merge_datasets()
+    df = vpi_modeltrain.adjust_dataset(df)
 
     CATEGORIES = ["Entertainment", "Film", "Gaming", "Knowledge", "Life", "Music", "News", "Sports"]
     input_dim = 4
@@ -249,7 +249,7 @@ def run_training():
         df_long = df_cat[df_cat["is_short"] == 0]
 
         print(f"\nTraining {cat} Shorts Model...")
-        model_short, scaler_short_X, scaler_short_y = train_model.train_one_model(
+        model_short, scaler_short_X, scaler_short_y = vpi_modeltrain.train_one_model(
             df_shorts, loss_name="huber", max_epochs=400, batch_size=256, lr=1e-3, patience=5, winsorize_top_q=0.0
             # try 0.005 to cap top 0.5% if tails dominate
         )
@@ -262,7 +262,7 @@ def run_training():
         joblib.dump(shorts_bundle, f"{cat.lower()}_short.pkl")
 
         print(f"\nTraining {cat} Long Model...")
-        model_long, scaler_long_X, scaler_long_y = train_model.train_one_model(
+        model_long, scaler_long_X, scaler_long_y = vpi_modeltrain.train_one_model(
             df_long, loss_name="huber", max_epochs=400, batch_size=256, lr=1e-3, patience=5, winsorize_top_q=0.0
         )
         long_bundle = {

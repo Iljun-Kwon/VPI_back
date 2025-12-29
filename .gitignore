@@ -182,5 +182,8 @@ cython_debug/
 
 # big model files
 *.csv
+*.pkl
+!xgb_day3_to_day7_model.pkl
+!xgb_baseline_day3_to_day7.pkl
 
 .idea/

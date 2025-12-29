@@ -5,8 +5,8 @@ from datetime import datetime, timezone
 from pydantic import BaseModel, Field, validator
 
 # Your existing predictor
-from util.bundle_predict import predict_single
-from util import bundle_predict
+from util.vpi_modelpred import predict_single
+from util import vpi_modelpred
 
 # Env (shared)
 BUNDLE_DIR = os.getenv("BUNDLE_DIR", "model")
@@ -29,11 +29,12 @@ def catid_to_group(cid: int) -> str | None:
 # ---------- I/O models ----------
 class VPIVideoIn(BaseModel):
     id: str = Field(..., description="Video id")
-    actual_views: int = Field(None, ge=0, description="for VPI calc")
     subscriber_count: int = Field(..., ge=0)
     upload_date: str = Field(..., description="ISO 8601, e.g. '2025-10-15T13:05:22Z'")
-    like_count: Optional[int] = Field(0, ge=0)
-    duration_sec: int = Field(..., ge=0, description="<=100 : shorts; >100 : long-form")
+    video_length: int = Field(..., ge=0, description="<=100 : shorts; >100 : long-form")
+    view_count: int = Field(None, ge=0, description="for VPI calc")
+    like_count: int = Field(0, ge=0)
+    comment_count: int = Field(0, ge=0)
     category_id: int = Field(..., description="YouTube videoCategoryId (int)")
 
     # Derived (server-side)
@@ -56,7 +57,7 @@ class VPIVideoIn(BaseModel):
 
     @validator("is_short", always=True, pre=True)
     def _derive_is_short(cls, v, values):
-        return (values.get("duration_sec", 0) <= 100)
+        return (values.get("video_length", 0) <= 100)
 
     @validator("hours_since_upload", always=True, pre=True)
     def _derive_hours_since_upload(cls, v, values):
@@ -101,8 +102,9 @@ def vpi_build_features(v: VPIVideoIn) -> Dict[str, Any]:
         "subscriber_count": float(v.subscriber_count),
         "hours_since_upload": float(v.hours_since_upload or 0.0),
         "like_count": float(v.like_count or 0),
+        "comment_count": float(v.comment_count or 0),
         "is_short": 1.0 if v.is_short else 0.0,
-        "duration_sec": float(v.duration_sec),
+        "video_length": float(v.video_length),
         "category_id": float(v.category_id),
     }
 
@@ -118,7 +120,7 @@ def run_vpi(payload: List[VPIVideoIn]) -> List[VPIOut]:
     out: List[VPIOut] = []
     for v in payload:
         # Pick the bundle by derived group + short/long using your helper
-        bundle_path = bundle_predict.get_bundle_path(
+        bundle_path = vpi_modelpred.get_bundle_path(
             v.category_group, bool(v.is_short), base_dir=BUNDLE_DIR
         )
         # Run your existing predictor with the same signature you use in /predict/views
@@ -127,9 +129,10 @@ def run_vpi(payload: List[VPIVideoIn]) -> List[VPIOut]:
             subs=v.subscriber_count,
             hours=v.hours_since_upload or 0.0,
             like_count=(v.like_count or 0),
+            comment_count=(v.comment_count or 0)
         )
         # Map to VPI (identity; swap in your real formula if needed)
-        vpi_value = (float(v.actual_views) / y_pred) * 100
-        out.append(VPIOut(id=v.id, vpi=vpi_value, pred=y_pred))
+        vpi_value = (float(v.view_count) / y_pred + 1e-9) * 100
+        out.append(VPIOut(id=v.id, vpi=vpi_value, pred=y_pred + 1e-9))
 
     return out
