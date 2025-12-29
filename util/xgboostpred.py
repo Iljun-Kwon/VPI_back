@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 
 # Load trained pipeline
-pipeline = joblib.load("xgb_7day_views_model.pkl")
+pipeline = joblib.load("xgb_day3_to_day7_model.pkl")
 
 def predict_views_day7(
     subscriber_count,
