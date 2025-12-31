@@ -12,6 +12,7 @@ def predict_baseline_views_day7(
     day_of_week,
     hour_sin,
     hour_cos,
+    is_short,
 ):
     data = {
         "subscriber_count": [subscriber_count],
@@ -20,6 +21,7 @@ def predict_baseline_views_day7(
         "day_of_week": [day_of_week],
         "hour_sin": [hour_sin],
         "hour_cos": [hour_cos],
+        "is_short": [is_short],
     }
     df = pd.DataFrame(data)
     log_pred = pipeline.predict(df)[0]

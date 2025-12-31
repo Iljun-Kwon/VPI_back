@@ -17,6 +17,8 @@ def predict_views_day7(
     hour_sin,
     hour_cos,
     likes_per_subscriber,
+    likes_per_time,
+    is_short
 ):
     data = {
         "subscriber_count": [subscriber_count],
@@ -30,6 +32,8 @@ def predict_views_day7(
         "hour_sin": [hour_sin],
         "hour_cos": [hour_cos],
         "likes_per_subscriber": [likes_per_subscriber],
+        "likes_per_time": [likes_per_time],
+        "is_short": [is_short]
     }
     df = pd.DataFrame(data)
     log_pred = pipeline.predict(df)[0]

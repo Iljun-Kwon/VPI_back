@@ -91,18 +91,6 @@ class Pred7In(BaseModel):
             raise ValueError(f"Unsupported category_id={cid}")
         return grp
 
-    def likes_per_subscriber(self) -> float:
-        # Always computed on server; never accepted from the client
-        denom = float(self.subscriber_count) + 1e-9
-        val = float(self.like_count) / denom
-        if math.isnan(val) or val < 0:
-            return 0.0
-        return val
-
-    def is_short_numeric(self) -> float:
-        return 1.0 if self.is_short else 0.0
-
-
 class Pred7Out(BaseModel):
     id: str
     predicted_7day_views: int
@@ -117,6 +105,15 @@ def run_pred7(payload: List[Pred7In]) -> List[Pred7Out]:
         likes_per_subscriber = float(item.like_count) / (float(item.subscriber_count) + 1e-9)
         if math.isnan(likes_per_subscriber) or likes_per_subscriber < 0:
             likes_per_subscriber = 0.0
+        
+        likes_per_time = float(item.like_count) / (float(item.hours_since_upload) + 1e-9)
+        if math.isnan(likes_per_time) or likes_per_time < 0:
+            likes_per_time = 0.0
+
+        if item.video_length <= 140:
+            is_short = True
+        else:
+            is_short = False
 
         # Call your XGBoost predictor
         y_hat = predict_views_day7(
@@ -131,6 +128,8 @@ def run_pred7(payload: List[Pred7In]) -> List[Pred7Out]:
             hour_sin=item.hour_sin,
             hour_cos=item.hour_cos,
             likes_per_subscriber=likes_per_subscriber,
+            likes_per_time = likes_per_time,
+            is_short = is_short,
         )
 
         base_y_hat = predict_baseline_views_day7(
@@ -140,6 +139,7 @@ def run_pred7(payload: List[Pred7In]) -> List[Pred7Out]:
             day_of_week = item.day_of_week,
             hour_sin = item.hour_sin,
             hour_cos = item.hour_cos,
+            is_short = is_short,
         )
 
         predicted_7day_views=int(round(float(y_hat)))
