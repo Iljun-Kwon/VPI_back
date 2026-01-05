@@ -124,15 +124,15 @@ def train_main_model(input_csv, target_col, output_model_name, output_csv_name):
 if __name__ == "__main__":
     tasks = [
         # (Input CSV, Target Column, Output Model File)
-        ("day3_to_day7_data.csv",   "views_7d",  "xgb_day3_to_day7_model.pkl", "day3_estimated_7d.csv"),
+        ("day3_to_day7_data_ver2.csv",   "views_7d",  "xgb_day3_to_day7_model.pkl", "day3_estimated_7d_ver2.csv"),
         #("day3_to_day30_data.csv",  "views_30d", "xgb_day3_to_day30_model.pkl"),
         #("day1_to_day30_data.csv",  "views_30d", "xgb_day1_to_day30_model.pkl"),
         #("day2_to_day30_data.csv",  "views_30d", "xgb_day2_to_day30_model.pkl"),
-        ("day3_to_day30_data.csv",  "views_30d", "xgb_day3_to_day30_model.pkl", "day3_estimated_30d.csv"),
+        #("day3_to_day30_data.csv",  "views_30d", "xgb_day3_to_day30_model.pkl", "day3_estimated_30d.csv"),
         #("day4_to_day30_data.csv",  "views_30d", "xgb_day4_to_day30_model.pkl"),
         #("day5_to_day30_data.csv",  "views_30d", "xgb_day5_to_day30_model.pkl"),
         #("day6_to_day30_data.csv",  "views_30d", "xgb_day6_to_day30_model.pkl"),
-        #("day7_to_day30_data.csv",  "views_30d", "xgb_day7_to_day30_model.pkl"),        
+        #("day7_to_day30_data.csv",  "views_30d", "xgb_day7_to_day30_model.pkl"),
     ]
 
     for csv_file, tgt_col, model_file, out_csv in tasks:

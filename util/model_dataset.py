@@ -52,6 +52,10 @@ def merge_datasets():
     df_merge['likes_per_subscriber'] = df_merge['like_count'] / df_merge['subscriber_count']
     df_merge['likes_per_time'] = df_merge['like_count'] / df_merge['hours_since_upload']
 
+    ## erase all error data
+    df_merge = df_merge[df_merge['channel_id'] != 'UCqz8F0bdoDiyzgdYPZAdA-Q']
+    df_merge = df_merge[df_merge['video_id'] != '3z_qnbu_T6A']
+
 
     print(df_merge.head())
 
@@ -71,6 +75,7 @@ def adjust_dataset(df):
     #ch_df = ch_df[ch_df["hours_since_upload"] < 360]
 
     df_final = ch_df[[
+        "channel_id",
         "video_id",
         "subscriber_count",
         "hours_since_upload",
@@ -90,6 +95,5 @@ def adjust_dataset(df):
     df_final = df_final.drop_duplicates()
     df_final.to_csv("data.csv", index=False, encoding="utf-8-sig")
 
-    #df_final.to_csv("final_dataset.csv", index=False)
     print("✅ final_dataset.csv saved with", len(df_final), "rows")
     return df_final

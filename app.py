@@ -10,7 +10,7 @@ import os
 from util.vpi_modelpred import predict_single
 from util.vpi_module import VPIVideoIn, VPIOut, run_vpi
 from util.pred7_module import Pred7In, Pred7Out, run_pred7
-from util import vpi_modelpred, vpi_modeltrain
+from util import vpi_modelpred, vpi_modeltrain,  model_dataset
 
 # ---- Config (use env or defaults) ----
 SHORTS_BUNDLE = os.getenv("SHORTS_BUNDLE", "model/shorts_bundle.pkl")
@@ -229,14 +229,14 @@ def health():
 
 @app.get("/data")
 def make_data():
-    df = vpi_modeltrain.merge_datasets()
-    df = vpi_modeltrain.adjust_dataset(df)
+    df = model_dataset.merge_datasets()
+    df = model_dataset.adjust_dataset(df)
 
 @app.get("/train")
 def run_training():
     os.environ["KMP_DUPLICATE_LIB_OK"] = "True"
-    df = vpi_modeltrain.merge_datasets()
-    df = vpi_modeltrain.adjust_dataset(df)
+    df = model_dataset.merge_datasets()
+    df = model_dataset.adjust_dataset(df)
 
     CATEGORIES = ["Entertainment", "Film", "Gaming", "Knowledge", "Life", "Music", "News", "Sports"]
     input_dim = 4

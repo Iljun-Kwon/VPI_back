@@ -50,16 +50,16 @@ def generate_dataset(source_df, max_feature_hour, target_hour, target_col_name, 
 
 print("Loading raw snapshots...")
 df = pd.read_csv(INPUT_CSV)
-'''
+
 # 1. ORIGINAL: Under Day 3 (72h) features -> Day 7 (168h) view
 generate_dataset(
     source_df=df,
     max_feature_hour=72,
     target_hour=168,
     target_col_name="views_7d",
-    output_filename="day3_to_day7_data.csv"
+    output_filename="day3_to_day7_data_ver2.csv"
 )
-
+'''
 # 2. NEW: Under Day 3 (72h) features -> Day 30 (720h) view
 generate_dataset(
     source_df=df,
@@ -77,7 +77,7 @@ generate_dataset(
     target_col_name="views_30d",
     output_filename="day7_to_day30_data.csv"
 )
-'''
+
 # 3. NEW: Under Day 1~7 features -> Day 30 (720h) view
 for day in range(1, 8):
     feature_hour = day * 24  # convert days to hours (1d=24h)
@@ -88,3 +88,4 @@ for day in range(1, 8):
         target_col_name="views_30d",
         output_filename=f"day{day}_to_day30_data.csv"
     )
+'''
